@@ -3,7 +3,6 @@
  */
 package com.livebarn.sushishop.backend.domain;
 
-import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
 

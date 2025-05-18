@@ -4,12 +4,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.annotation.PostConstruct;
-
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.context.event.EventListener;
-import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Service;
 
 import com.livebarn.sushishop.backend.domain.Sushi;
@@ -25,7 +22,6 @@ import reactor.core.publisher.Mono;
 public class StaticDataService {
     private final SushiRepo sushiRepo;
     private final StatusRepo statusRepo;
-    private final DatabaseClient databaseClient;
 
     private final Map<Integer, Sushi> sushiMap = new HashMap<>();
     public final Map<String, Integer> statusNameToId = new HashMap<>();
@@ -47,53 +43,11 @@ public class StaticDataService {
         return sushiMap.values();
     }
 
-    //@PostConstruct
     @EventListener(ApplicationReadyEvent.class)
     public void init() {
-        //initializeSchemaAndData()
-        //        .thenMany(loadStaticData())
-        //        .subscribe();
         loadStaticData().subscribe();
     }
-/**
-    private reactor.core.publisher.Mono<Void> initializeSchemaAndData() {
-        return databaseClient.sql("""
-                DROP TABLE IF EXISTS sushi_order;
-                DROP TABLE IF EXISTS sushi;
-                DROP TABLE IF EXISTS status;
 
-                CREATE TABLE status (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    name VARCHAR(30) NOT NULL
-                );
-
-                CREATE TABLE sushi (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    name VARCHAR(30),
-                    time_to_make INT DEFAULT NULL
-                );
-
-                CREATE TABLE sushi_order (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    status_id INT NOT NULL,
-                    sushi_id INT NOT NULL,
-                    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-
-                INSERT INTO sushi (name, time_to_make) VALUES
-                    ('California Roll', 30),
-                    ('Kamikaze Roll', 40),
-                    ('Dragon Eye', 50);
-
-                INSERT INTO status (name) VALUES
-                    ('created'),
-                    ('in-progress'),
-                    ('paused'),
-                    ('finished'),
-                    ('cancelled');
-            """).then();
-    }
-**/
     public Mono<Void> loadStaticData() {
         return sushiRepo.findAll()
                 .doOnNext(sushi -> sushiMap.put(sushi.getId(), sushi))
