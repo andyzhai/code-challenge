@@ -34,8 +34,7 @@ class OrderProcessor {
         Integer completedId = staticData.getStatusIdByName("finished");
         Integer pausedId = staticData.getStatusIdByName("paused");
 
-        if (!order.getStatusId().equals(staticData.getStatusIdByName("created")) &&
-                !order.getStatusId().equals(pausedId)) {
+        if (!order.getStatusId().equals(staticData.getStatusIdByName("created")) ) {
             return Mono.empty();
         }
 
@@ -47,15 +46,22 @@ class OrderProcessor {
         long totalTime = sushi.getTimeToMake();
         long timeLeft = totalTime - order.getTimeSpent();
 
-        return Mono.delay(Duration.ofSeconds(timeLeft))
-                .publishOn(Schedulers.parallel())
-                .doOnNext(tick -> {
-                    if (order.getStatusId().equals(inProgressId)) {
-                        order.setTimeSpent(totalTime);
-                        order.setStatusId(completedId);
-                        orderRepository.save(order).subscribe();
-                    }
-                })
-                .then();
+        return orderRepository.save(order)
+                .then(
+                        Mono.delay(Duration.ofSeconds(sushi.getTimeToMake() - order.getTimeSpent()))
+                                .publishOn(Schedulers.parallel())
+                                .flatMap(tick ->
+                                        orderRepository.findById(order.getId())
+                                                .flatMap(latest -> {
+                                                    if (latest.getStatusId().equals(staticData.getStatusIdByName("in-progress"))) {
+                                                        latest.setTimeSpent((long) sushi.getTimeToMake());
+                                                        latest.setStatusId(staticData.getStatusIdByName("finished"));
+                                                        return orderRepository.save(latest).then();
+                                                    } else {
+                                                        return Mono.empty(); // Do not finish if it's paused/cancelled
+                                                    }
+                                                })
+                                )
+                );
     }
 }

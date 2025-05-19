@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
-@DependsOn("dataInitializer") // Matches the bean name
+//@DependsOn("dataInitializer") // Matches the bean name
 public class StaticDataService {
     private final SushiRepo sushiRepo;
     private final StatusRepo statusRepo;
