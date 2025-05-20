@@ -10,8 +10,6 @@
             id INT AUTO_INCREMENT PRIMARY KEY,
             status_id INT NOT NULL,
             sushi_id INT NOT NULL,
-            timeSpent INT DEFAULT NULL,
-            lastStartedAt INT DEFAULT NULL,
             createdAt TIMESTAMP NOT NULL default CURRENT_TIMESTAMP
         );
 
