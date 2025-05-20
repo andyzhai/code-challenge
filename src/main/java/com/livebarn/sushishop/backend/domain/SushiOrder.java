@@ -42,11 +42,4 @@ public class SushiOrder {
 
 	@Column("createdAt")
 	private Instant createdAt;
-    //@Column("timeSpent")
-	@Transient
-   	private Long timeSpent; // Track time spent
-   	//@Column("lastStartedAt")
-	@Transient
-   	private Long lastStartedAt; // Epoch seconds
-	
 }

@@ -43,9 +43,7 @@ public class OrderService {
         SushiOrder order = new SushiOrder(null,
                 staticData.getStatusIdByName("created"),
                 sushi.getId(),
-                Instant.now(),
-                0L,
-                null);
+                Instant.now());
 
         return orderRepo.save(order)
                 .doOnNext(
