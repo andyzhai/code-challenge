@@ -14,6 +14,7 @@ import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.data.annotation.Id;
@@ -41,9 +42,11 @@ public class SushiOrder {
 
 	@Column("createdAt")
 	private Instant createdAt;
-    @Column("timeSpent")
-    private Long timeSpent; // Track time spent
-    @Column("lastStartedAt")
-    private Long lastStartedAt; // Epoch seconds
+    //@Column("timeSpent")
+	@Transient
+   	private Long timeSpent; // Track time spent
+   	//@Column("lastStartedAt")
+	@Transient
+   	private Long lastStartedAt; // Epoch seconds
 	
 }

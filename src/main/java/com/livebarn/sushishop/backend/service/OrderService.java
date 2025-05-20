@@ -5,7 +5,9 @@ package com.livebarn.sushishop.backend.service;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
+import com.livebarn.sushishop.backend.domain.RuntimeOrderState;
 import com.livebarn.sushishop.backend.domain.Status;
 import com.livebarn.sushishop.backend.domain.Sushi;
 import com.livebarn.sushishop.backend.domain.SushiOrder;
@@ -26,6 +28,11 @@ public class OrderService {
     private final SushiOrderRepo orderRepo;
     private final StaticDataService staticData;
     private final Sinks.Many<SushiOrder> taskSink;
+    private final Map<Integer, RuntimeOrderState> orderStates = new ConcurrentHashMap<>();
+
+    public Map<Integer, RuntimeOrderState> getOrderStates() {
+        return orderStates;
+    }
 
     public Mono<SushiOrder> submit(String sushiName) {
         Sushi sushi = staticData.getAllSushi().stream()
@@ -38,18 +45,25 @@ public class OrderService {
                 sushi.getId(),
                 Instant.now(),
                 0L,
-                0L);
+                null);
 
         return orderRepo.save(order)
-                .doOnNext(taskSink::tryEmitNext);
+                .doOnNext(
+                        o ->
+                        {   orderStates.put(o.getId(), new RuntimeOrderState(0L, null));
+                            taskSink.tryEmitNext(o);
+                        });
     }
 
     public Mono<Boolean> pause(int id) {
         return orderRepo.findById(id).flatMap(order -> {
             if (order.getStatusId().equals(staticData.getStatusIdByName("in-progress"))) {
+                RuntimeOrderState orderState = orderStates.get(id);
                 long now = Instant.now().getEpochSecond();
-                order.setTimeSpent(order.getTimeSpent() + (now - order.getLastStartedAt()));
+                long updatedTimeSpent = orderState.getTimeSpent() + (now - orderState.getLastStartedAt());
+                //order.setTimeSpent(updatedTimeSpent);
                 order.setStatusId(staticData.getStatusIdByName("paused"));
+                orderStates.put(id,new RuntimeOrderState(updatedTimeSpent,null));
                 return orderRepo.save(order).thenReturn(true);
             }
             return Mono.just(false);
@@ -72,8 +86,10 @@ public class OrderService {
         return orderRepo.findById(id).flatMap(order -> {
             if (!order.getStatusId().equals(staticData.getStatusIdByName("finished"))) {
                 if (order.getStatusId().equals(staticData.getStatusIdByName("in-progress"))) {
+                    RuntimeOrderState orderState = orderStates.get(id);
                     long now = Instant.now().getEpochSecond();
-                    order.setTimeSpent(order.getTimeSpent() + (now - order.getLastStartedAt()));
+
+                    orderState.setTimeSpent(orderState.getTimeSpent() + (now - orderState.getLastStartedAt()));
                 }
                 order.setStatusId(staticData.getStatusIdByName("cancelled"));
                 return orderRepo.save(order).thenReturn(true);
@@ -93,10 +109,11 @@ public class OrderService {
                         result.put(status.getName(), new ArrayList<>());
                     }
                     for (SushiOrder order : orders) {
-                        long timeSpent = Optional.ofNullable(order.getTimeSpent()).orElse(0L);
+                        RuntimeOrderState orderState = orderStates.get(order.getId());
+                        long timeSpent = Optional.ofNullable(orderState.getTimeSpent()).orElse(0L);
                         String statusName = staticData.getStatusNameById(order.getStatusId());
                         if ("in-progress".equals(statusName)) {
-                            timeSpent += (Instant.now().getEpochSecond() - order.getLastStartedAt());
+                            timeSpent += (Instant.now().getEpochSecond() - orderState.getLastStartedAt());
                         }
                         result.get(statusName).add(Map.of(
                                 "orderId", order.getId(),
